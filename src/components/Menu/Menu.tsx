@@ -14,7 +14,7 @@ const Menu = () => {
 
   return (
     <div className="flex fixed bottom-0 w-[100%] bg-[white] ">
-      <div className="flex w-[100%] pr-[8px] m-[8px] pl-[8px] justify-between">
+      <div className="flex w-[100%] pr-[10px] m-[8px] pl-[10px] justify-between">
         {MENU_ITEMS.map(item => (
           <Link
             to={item.link}

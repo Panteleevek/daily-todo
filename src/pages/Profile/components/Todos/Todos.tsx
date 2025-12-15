@@ -1,30 +1,17 @@
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
-import { toggleTodoInstance, loadTodosForDate, incrementTodoCount } from '@/app/todos/slice';
-import { useCallback, useEffect, useMemo } from 'react';
+import { loadTodosForDate } from '@/app/todos/slice';
+import { useEffect, useMemo } from 'react';
 import { getToday } from '@/utils/dateUtils';
 import Todo from '@/components/Todo/Todo';
 
 const Todos = () => {
   const dispatch = useAppDispatch();
   const { instances, loading, selectedDate } = useAppSelector(s => s.todos);
-
   const today = getToday();
-  const isNotToday = useMemo(() => selectedDate !== today,[selectedDate, today]) ;
+  const isNotToday = useMemo(() => selectedDate !== today, [selectedDate, today]);
   useEffect(() => {
     dispatch(loadTodosForDate(selectedDate, true));
   }, [dispatch, selectedDate]);
-
-  const handleToggle = useCallback(
-    (instanceId: string) => {
-      if(!isNotToday){
-      dispatch(incrementTodoCount(instanceId));
-      dispatch(toggleTodoInstance(instanceId));
-      }
-    
-      return null
-    },
-    [dispatch, isNotToday]
-  );
 
   if (loading) {
     return (
@@ -39,10 +26,18 @@ const Todos = () => {
       <div className="px-2 mt-[12px]">
         {instances.length === 0 ? (
           <div className="text-center py-8 text-gray-500 bg-white rounded-xl shadow-sm">
-           Список пустой
+            Список пустой
           </div>
         ) : (
-          instances.map(instance => <Todo key={instance.id} instance={instance} onClick={handleToggle} isProfile disabled={isNotToday} />)
+          instances.map(instance => (
+            <Todo
+              key={instance.id}
+              instance={instance}
+              onClick={() => {}}
+              isProfile
+              disabled={isNotToday}
+            />
+          ))
         )}
       </div>
     </div>

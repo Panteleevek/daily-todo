@@ -4,7 +4,7 @@ import TodoModal from "./components/TodoModal/TodoModal"
 
 export default function Layout() {
   return (
-    <div className=" className='flex flex-col w-[100%] h-full justify-between items-center min-h-[100vh] bg-gradient-to-br from-[#f0eee9] to-white'">
+    <div className=' h-full justify-between items-center min-h-[100vh] bg-gradient-to-br from-[#f0eee9] to-white'>
       <Outlet />  
       <TodoModal/>
       <Menu />

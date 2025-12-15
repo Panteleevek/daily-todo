@@ -66,7 +66,9 @@ const Todo = ({ instance, onClick, disabled, isProfile }: Todo) => {
           </div>
           <div
             className="flex items-center cursor-pointer font-medium text-gray-500 border-1 bg-white h-[44px] px-4 rounded-lg hover:bg-gray-100"
-            onClick={() => dispatch(deleteTemplate(templateId))}
+            onClick={() =>{
+               dispatch(deleteTemplate(templateId))
+              }}
           >
             Удалить
           </div>

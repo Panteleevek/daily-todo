@@ -1,18 +1,5 @@
 import React, { useEffect } from 'react';
-import ReactDOM from 'react-dom';
-
-// Портальный компонент
-const ModalPortal = ({ children }: { children: React.ReactNode }) => {
-  let modalRoot = document.getElementById('modal-root');
-
-  if (!modalRoot) {
-    modalRoot = document.createElement('div');
-    modalRoot.id = 'modal-root';
-    document.body.appendChild(modalRoot);
-  }
-
-  return ReactDOM.createPortal(children, modalRoot);
-};
+import Portal from '../Portal/Portal';
 
 type Modal = {
   isOpen: boolean;
@@ -24,7 +11,6 @@ type Modal = {
   onClick: () => void;
 };
 
-// Основной компонент модалки
 const Modal = ({
   isOpen,
   onClose,
@@ -61,7 +47,7 @@ const Modal = ({
   if (!isOpen) return null;
 
   return (
-    <ModalPortal>
+    <Portal>
       <div
         className="fixed inset-0 z-50 flex items-center justify-center p-2 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
         onClick={handleBackdropClick}
@@ -100,7 +86,7 @@ const Modal = ({
           </div>
         </div>
       </div>
-    </ModalPortal>
+    </Portal>
   );
 };
 

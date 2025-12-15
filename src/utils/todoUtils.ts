@@ -55,3 +55,18 @@ export const generateInstancesForDate = (
   
   return instances;
 };
+
+export const shouldTemplateShowOnDate = (template: TodoTemplate, dayOfWeek: DayOfWeek): boolean => {
+  switch (template.repeatType) {
+    case 'daily':
+      return true;
+    
+    case 'weekly':
+    case 'specific_days':
+      const includes = template.repeatDays?.includes(dayOfWeek) ?? false;
+      return includes;
+    
+    default:
+      return false;
+  }
+};

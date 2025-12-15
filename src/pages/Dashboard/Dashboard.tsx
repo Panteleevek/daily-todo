@@ -1,13 +1,13 @@
-import Header from "@/components/Header/Header"
-import List from "./components/List/List"
+import Header from '@/components/Header/Header';
+import List from './components/List/List';
 
 const Dashboard = () => {
-    return (
-        <>
-        <Header/>
-        <List/>
-        </>
-    )
-}
+  return (
+    <div className="relative">
+      <Header />
+      <List />
+    </div>
+  );
+};
 
-export default Dashboard
+export default Dashboard;

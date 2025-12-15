@@ -10,25 +10,25 @@ class IndexedDBService {
 
   private async openDB(): Promise<IDBDatabase> {
     if (this.db) return this.db;
-    
+
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
-      
+
       request.onerror = reject;
       request.onsuccess = () => {
         this.db = request.result;
         resolve(this.db);
       };
-      
+
       request.onupgradeneeded = () => {
         const db = request.result;
-        
+
         // Store для шаблонов
         if (!db.objectStoreNames.contains(STORE_TEMPLATES)) {
           const store = db.createObjectStore(STORE_TEMPLATES, { keyPath: 'id' });
           store.createIndex('createdAt', 'createdAt', { unique: false });
         }
-        
+
         // Store для экземпляров
         if (!db.objectStoreNames.contains(STORE_INSTANCES)) {
           const store = db.createObjectStore(STORE_INSTANCES, { keyPath: 'id' });
@@ -44,7 +44,7 @@ class IndexedDBService {
   // Шаблоны
   async getAllTemplates(): Promise<TodoTemplate[]> {
     const db = await this.openDB();
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const transaction = db.transaction(STORE_TEMPLATES, 'readonly');
       const store = transaction.objectStore(STORE_TEMPLATES);
       const request = store.getAll();
@@ -52,75 +52,148 @@ class IndexedDBService {
       request.onerror = () => resolve([]);
     });
   }
+  async updateTemplateCompletion(
+    templateId: string,
+    date: string,
+    completed: boolean
+  ): Promise<void> {
+    const db = await this.openDB();
 
-async saveTemplate(template: TodoTemplate): Promise<void> {
-  const db = await this.openDB();
-  
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_TEMPLATES, STORE_INSTANCES], 'readwrite');
-    const templateStore = transaction.objectStore(STORE_TEMPLATES);
-    const instanceStore = transaction.objectStore(STORE_INSTANCES);
-    
-    const saveRequest = templateStore.put(template);
-    
-    saveRequest.onsuccess = () => {
-      const index = instanceStore.index('templateId');
-      
-      // Важно: используем openKeyCursor или openCursor с range
-      const keyRange = IDBKeyRange.only(template.id);
-      const cursorRequest = index.openCursor(keyRange);
-      
-      let instancesFound = 0;
-      
-      cursorRequest.onsuccess = (event) => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-        
-        if (cursor) {
-          instancesFound++;
-          const instance = cursor.value;
-          // Обновляем экземпляр
-          const updatedInstance = {
-            ...instance,
-            title: template.title,
-            time: template.time,
-            count: template.count || instance.count || '1',
-          };
-          
-          const updateRequest = cursor.update(updatedInstance);
-          
-          updateRequest.onsuccess = () => {
-            cursor.continue();
-          };
-          
-          updateRequest.onerror = (updateEvent) => {
-            console.error(`💾 SAVE TEMPLATE - Error updating instance ${instancesFound}:`, updateEvent);
-            cursor.continue();
-          };
-          
-        } else {
-          resolve();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_TEMPLATES, 'readwrite');
+      const store = transaction.objectStore(STORE_TEMPLATES);
+
+      // Получаем шаблон
+      const getRequest = store.get(templateId);
+
+      getRequest.onsuccess = () => {
+        const template = getRequest.result;
+        if (!template) {
+          reject(new Error(`Template ${templateId} not found`));
+          return;
         }
+
+        // Инициализируем completedDates если нет
+        if (!template.completedDates) {
+          template.completedDates = [];
+        }
+
+        // Форматируем дату (YYYY-MM-DD)
+        const formattedDate = date.split('T')[0];
+
+        if (completed) {
+          // Добавляем дату если ее еще нет
+          if (!template.completedDates.includes(formattedDate)) {
+            template.completedDates.push(formattedDate);
+            template.lastCompleted = new Date().toISOString();
+          }
+        } else {
+          // Удаляем дату если задача отменена
+          template.completedDates = template.completedDates.filter(d => d !== formattedDate);
+        }
+
+        // Сортируем даты
+        template.completedDates.sort();
+
+        // Обновляем шаблон
+        const updateRequest = store.put(template);
+
+        updateRequest.onsuccess = () => {
+          console.log('✅ Template completion updated:', {
+            templateId,
+            date: formattedDate,
+            completed,
+            totalCompletedDates: template.completedDates.length,
+          });
+          resolve();
+        };
+
+        updateRequest.onerror = event => {
+          console.error('❌ Error updating template completion:', event);
+          reject(event);
+        };
       };
-      
-      cursorRequest.onerror = (event) => {
-        console.error('💾 SAVE TEMPLATE - Cursor error:', event);
-        // Даже если ошибка курсора, шаблон уже сохранен
+
+      getRequest.onerror = event => {
+        console.error('❌ Error getting template:', event);
+        reject(event);
+      };
+    });
+  }
+
+  async saveTemplate(template: TodoTemplate): Promise<void> {
+    const db = await this.openDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_TEMPLATES, STORE_INSTANCES], 'readwrite');
+      const templateStore = transaction.objectStore(STORE_TEMPLATES);
+      const instanceStore = transaction.objectStore(STORE_INSTANCES);
+      const templateToSave = {
+        ...template,
+        completedDates: template.completedDates || [],
+      };
+      const saveRequest = templateStore.put(templateToSave);
+
+      saveRequest.onsuccess = () => {
+        const index = instanceStore.index('templateId');
+
+        // Важно: используем openKeyCursor или openCursor с range
+        const keyRange = IDBKeyRange.only(template.id);
+        const cursorRequest = index.openCursor(keyRange);
+
+        let instancesFound = 0;
+
+        cursorRequest.onsuccess = event => {
+          const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+
+          if (cursor) {
+            instancesFound++;
+            const instance = cursor.value;
+            // Обновляем экземпляр
+            const updatedInstance = {
+              ...instance,
+              title: template.title,
+              time: template.time,
+              count: template.count || instance.count || '1',
+            };
+
+            const updateRequest = cursor.update(updatedInstance);
+
+            updateRequest.onsuccess = () => {
+              cursor.continue();
+            };
+
+            updateRequest.onerror = updateEvent => {
+              console.error(
+                `💾 SAVE TEMPLATE - Error updating instance ${instancesFound}:`,
+                updateEvent
+              );
+              cursor.continue();
+            };
+          } else {
+            resolve();
+          }
+        };
+
+        cursorRequest.onerror = event => {
+          console.error('💾 SAVE TEMPLATE - Cursor error:', event);
+          // Даже если ошибка курсора, шаблон уже сохранен
+          resolve();
+        };
+      };
+
+      saveRequest.onerror = event => {
+        console.error('💾 SAVE TEMPLATE - Error saving template:', event);
+        reject(event);
+      };
+
+      transaction.onerror = event => {
+        console.error('💾 SAVE TEMPLATE - Transaction error:', event);
+        // Не reject'им здесь, т.к. шаблон может быть уже сохранен
         resolve();
       };
-    };
-    
-    saveRequest.onerror = (event) => {
-      console.error('💾 SAVE TEMPLATE - Error saving template:', event);
-      reject(event);
-    };
-
-    transaction.onerror = (event) => {
-      console.error('💾 SAVE TEMPLATE - Transaction error:', event);
-      // Не reject'им здесь, т.к. шаблон может быть уже сохранен
-      resolve();
-    };
-  });
-}
+    });
+  }
   async deleteTemplate(id: string): Promise<void> {
     const db = await this.openDB();
     return new Promise((resolve, reject) => {
@@ -135,7 +208,7 @@ async saveTemplate(template: TodoTemplate): Promise<void> {
   // Экземпляры
   async getInstancesForDate(date: string): Promise<TodoInstance[]> {
     const db = await this.openDB();
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const transaction = db.transaction(STORE_INSTANCES, 'readonly');
       const store = transaction.objectStore(STORE_INSTANCES);
       const index = store.index('date');
@@ -158,7 +231,7 @@ async saveTemplate(template: TodoTemplate): Promise<void> {
 
   async getInstance(date: string, templateId: string): Promise<TodoInstance | null> {
     const db = await this.openDB();
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const transaction = db.transaction(STORE_INSTANCES, 'readonly');
       const store = transaction.objectStore(STORE_INSTANCES);
       const index = store.index('date_template');
@@ -176,8 +249,8 @@ async saveTemplate(template: TodoTemplate): Promise<void> {
       const store = transaction.objectStore(STORE_INSTANCES);
       const index = store.index('templateId');
       const request = index.openCursor(IDBKeyRange.only(templateId));
-      
-      request.onsuccess = (event) => {
+
+      request.onsuccess = event => {
         const cursor = (event.target as IDBRequest).result;
         if (cursor) {
           cursor.delete();
@@ -192,7 +265,7 @@ async saveTemplate(template: TodoTemplate): Promise<void> {
 
   async getInstancesInDateRange(startDate: string, endDate: string): Promise<TodoInstance[]> {
     const db = await this.openDB();
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const transaction = db.transaction(STORE_INSTANCES, 'readonly');
       const store = transaction.objectStore(STORE_INSTANCES);
       const index = store.index('date');

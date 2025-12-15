@@ -11,6 +11,8 @@ const initialState: TodoState = {
   selectedDate: getToday(),
   loading: false,
   currentInstance: null,
+  currentDateInstances: undefined,
+  emptyList: false,
 };
 
 export const todosSlice = createSlice({
@@ -36,6 +38,9 @@ export const todosSlice = createSlice({
     },
     setCurrentInstance: (state, action: PayloadAction<TodoInstance>) => {
       state.currentInstance = action.payload;
+    },
+    setCurrentInstances: (state, action: PayloadAction<string>) => {
+      state.currentDateInstances = action.payload;
     },
     updateInstance: (state, action: PayloadAction<TodoInstance>) => {
       const index = state.instances.findIndex(i => i.id === action.payload.id);
@@ -66,6 +71,9 @@ export const todosSlice = createSlice({
     clearError: state => {
       state.error = undefined;
     },
+    setEmptyList: (state, action: PayloadAction<boolean>) => {
+      state.emptyList = action.payload;
+    },
   },
 });
 
@@ -77,7 +85,10 @@ export const loadTodosForDate =
     dispatch(todosSlice.actions.setError(undefined));
     try {
       const templates = await indexedDBService.getAllTemplates();
+      const emptyList = Array.isArray(templates) && templates.length === 0;
+      dispatch(todosSlice.actions.setEmptyList(emptyList));
       dispatch(todosSlice.actions.setTemplates(templates));
+
       const existingInstances = await indexedDBService.getInstancesForDate(date);
       // Генерируем экземпляры для даты
       const dateObj = new Date(date);
@@ -180,34 +191,50 @@ export const incrementTodoCount =
 
     const currentCount = parseInt(instance.completedCount || '0');
     const targetCount = parseInt(instance.count || '1');
-
-    let completedCount: string;
-    let completed: boolean;
-    let completedAt: string | undefined;
-    if (!instance.completed) {
-      // Увеличиваем счетчик
-      const newCount = Math.min(currentCount + 1, targetCount);
-      completedCount = newCount.toString();
-      completed = newCount >= targetCount;
-      completedAt = completed ? new Date().toISOString() : undefined;
-    } else {
-      completedCount = '0';
-      completed = false;
-      completedAt = undefined;
-    }
+    const newCount = Math.min(currentCount + 1, targetCount);
+    const isCompleted = newCount >= targetCount;
 
     const updatedInstance: TodoInstance = {
       ...instance,
-      completedCount,
-      completed,
-      completedAt,
+      completedCount: newCount.toString(),
+      completed: isCompleted,
+      completedAt: isCompleted ? new Date().toISOString() : instance.completedAt,
     };
 
     try {
-      dispatch(todosSlice.actions.updateInstance(updatedInstance));
+      // Сохраняем экземпляр
       await indexedDBService.saveInstance(updatedInstance);
+
+      // Если задача полностью выполнена, обновляем шаблон
+      if (isCompleted && !instance.completed) {
+        console.log('🎯 Task completed, updating template history');
+
+        // Обновляем completedDates в шаблоне
+        await indexedDBService.updateTemplateCompletion(instance.templateId, instance.date, true);
+
+        // Обновляем шаблон в Redux state
+        const template = state.todos.templates.find(t => t.id === instance.templateId);
+        if (template) {
+          const updatedTemplate = {
+            ...template,
+            completedDates: [...(template.completedDates || []), instance.date],
+            lastCompleted: new Date().toISOString(),
+          };
+
+          // Обновляем в Redux
+          const templateIndex = state.todos.templates.findIndex(t => t.id === instance.templateId);
+          if (templateIndex !== -1) {
+            const newTemplates = [...state.todos.templates];
+            newTemplates[templateIndex] = updatedTemplate;
+            dispatch(todosSlice.actions.setTemplates(newTemplates));
+          }
+        }
+      }
+
+      // Обновляем экземпляр в Redux
+      dispatch(todosSlice.actions.updateInstance(updatedInstance));
     } catch (error) {
-      console.error('Failed to toggle todo:', error);
+      console.error('Failed to increment count:', error);
     }
   };
 
@@ -275,19 +302,56 @@ export const toggleTodoInstance =
 
     if (!instance) return;
 
+    const currentCount = parseInt(instance.completedCount || '0');
+    const targetCount = parseInt(instance.count || '1');
+
+    let completedCount: string;
+    let completed: boolean;
+    let completedAt: string | undefined;
+
+    if (!instance.completed) {
+      // Выполняем задачу
+      const newCount = Math.min(currentCount + 1, targetCount);
+      completedCount = newCount.toString();
+      completed = newCount >= targetCount;
+      completedAt = completed ? new Date().toISOString() : undefined;
+    } else {
+      // Отменяем выполнение
+      completedCount = '0';
+      completed = false;
+      completedAt = undefined;
+    }
+
     const updatedInstance: TodoInstance = {
       ...instance,
-      completedAt: !instance.completed ? new Date().toISOString() : undefined,
+      completedCount,
+      completed,
+      completedAt,
     };
 
     try {
+      // Сохраняем экземпляр
       await indexedDBService.saveInstance(updatedInstance);
+
+      // Обновляем completedDates в шаблоне
+      if (completed && !instance.completed) {
+        // Добавляем дату выполнения
+        await indexedDBService.updateTemplateCompletion(instance.templateId, instance.date, true);
+      } else if (!completed && instance.completed) {
+        // Удаляем дату выполнения
+        await indexedDBService.updateTemplateCompletion(instance.templateId, instance.date, false);
+      }
+
+      // Обновляем в Redux
       dispatch(todosSlice.actions.updateInstance(updatedInstance));
+
+      // Перезагружаем шаблоны для обновления статистики
+      const templates = await indexedDBService.getAllTemplates();
+      dispatch(todosSlice.actions.setTemplates(templates));
     } catch (error) {
       console.error('Failed to toggle todo:', error);
     }
   };
-
 export const deleteTemplate =
   (templateId: string): AppThunk =>
   async (dispatch, getState) => {
@@ -301,7 +365,7 @@ export const deleteTemplate =
 
       // Обновляем экземпляры для текущей даты
       const currentDate = getState().todos.selectedDate;
-      await dispatch(loadTodosForDate(currentDate));
+      dispatch(loadTodosForDate(currentDate));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to delete template';
       dispatch(todosSlice.actions.setError(message));
@@ -329,6 +393,7 @@ export const {
   setLoading,
   setError,
   clearError,
+  setCurrentInstances,
 } = todosSlice.actions;
 
 export default todosSlice.reducer;
