@@ -1,4 +1,3 @@
-// components/Dropdown.tsx
 import React, { useState, useEffect, useRef } from 'react';
 
 interface DropdownOption {
@@ -14,7 +13,7 @@ interface DropdownProps {
   disabled?: boolean;
   multiple?: boolean;
   maxSelections?: number;
-  truncatePlaceholder?: boolean; // Новый пропс для обрезания текста
+  truncatePlaceholder?: boolean;
 }
 
 const Dropdown: React.FC<DropdownProps> = ({ 
@@ -25,7 +24,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   disabled = false,
   multiple = false,
   maxSelections,
-  truncatePlaceholder = true // По умолчанию включено
+  truncatePlaceholder = true 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -45,7 +44,6 @@ const Dropdown: React.FC<DropdownProps> = ({
     }
   }, [truncatePlaceholder]);
 
-  // Получаем выбранные значения
   const getSelectedValues = (): string[] => {
     if (multiple) {
       if (Array.isArray(value)) {
@@ -107,7 +105,6 @@ const Dropdown: React.FC<DropdownProps> = ({
 
   const { displayText, fullText } = getButtonText();
 
-  // Обработка выбора
   const handleSelect = (option: DropdownOption) => {
     if (disabled) return;
 
@@ -183,12 +180,12 @@ const Dropdown: React.FC<DropdownProps> = ({
           const option = options.find(opt => opt.value === value);
           if (!option) return null;
           
-          const truncatedLabel = truncateText(option.label, 100); // Максимальная ширина для чипа
+          const truncatedLabel = truncateText(option.label, 100);
           return (
             <div 
               key={value}
               className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm flex-shrink-0"
-              title={option.label} // Показываем полный текст при наведении
+              title={option.label}
             >
               <span className="truncate max-w-[80px]">{truncatedLabel}</span>
               <button
@@ -218,9 +215,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <div
-        type="button"
         onClick={toggleDropdown}
-        disabled={disabled}
         className={`
           w-full 
           min-h-[44px]
@@ -255,11 +250,9 @@ const Dropdown: React.FC<DropdownProps> = ({
           </span>
         </div>
         
-        {/* Иконки справа */}
         <div className="flex items-center gap-2 ml-2 flex-shrink-0">
           {multiple && selectedValues.length > 0 && (
             <div
-              type="button"
               onClick={clearAll}
               className="
                 text-gray-400 
@@ -292,7 +285,6 @@ const Dropdown: React.FC<DropdownProps> = ({
         </div>
       </div>
 
-      {/* Список опций */}
       {isOpen && !disabled && (
         <div className="
           absolute 

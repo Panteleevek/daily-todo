@@ -23,13 +23,11 @@ class IndexedDBService {
       request.onupgradeneeded = () => {
         const db = request.result;
 
-        // Store для шаблонов
         if (!db.objectStoreNames.contains(STORE_TEMPLATES)) {
           const store = db.createObjectStore(STORE_TEMPLATES, { keyPath: 'id' });
           store.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
-        // Store для экземпляров
         if (!db.objectStoreNames.contains(STORE_INSTANCES)) {
           const store = db.createObjectStore(STORE_INSTANCES, { keyPath: 'id' });
           store.createIndex('templateId', 'templateId', { unique: false });
@@ -41,7 +39,6 @@ class IndexedDBService {
     });
   }
 
-  // Шаблоны
   async getAllTemplates(): Promise<TodoTemplate[]> {
     const db = await this.openDB();
     return new Promise(resolve => {
@@ -63,7 +60,6 @@ class IndexedDBService {
       const transaction = db.transaction(STORE_TEMPLATES, 'readwrite');
       const store = transaction.objectStore(STORE_TEMPLATES);
 
-      // Получаем шаблон
       const getRequest = store.get(templateId);
 
       getRequest.onsuccess = () => {
@@ -73,38 +69,26 @@ class IndexedDBService {
           return;
         }
 
-        // Инициализируем completedDates если нет
         if (!template.completedDates) {
           template.completedDates = [];
         }
 
-        // Форматируем дату (YYYY-MM-DD)
         const formattedDate = date.split('T')[0];
 
         if (completed) {
-          // Добавляем дату если ее еще нет
           if (!template.completedDates.includes(formattedDate)) {
             template.completedDates.push(formattedDate);
             template.lastCompleted = new Date().toISOString();
           }
         } else {
-          // Удаляем дату если задача отменена
-          template.completedDates = template.completedDates.filter(d => d !== formattedDate);
+          template.completedDates = template.completedDates.filter((d: any) => d !== formattedDate);
         }
 
-        // Сортируем даты
         template.completedDates.sort();
 
-        // Обновляем шаблон
         const updateRequest = store.put(template);
 
         updateRequest.onsuccess = () => {
-          console.log('✅ Template completion updated:', {
-            templateId,
-            date: formattedDate,
-            completed,
-            totalCompletedDates: template.completedDates.length,
-          });
           resolve();
         };
 
@@ -137,7 +121,6 @@ class IndexedDBService {
       saveRequest.onsuccess = () => {
         const index = instanceStore.index('templateId');
 
-        // Важно: используем openKeyCursor или openCursor с range
         const keyRange = IDBKeyRange.only(template.id);
         const cursorRequest = index.openCursor(keyRange);
 
@@ -149,7 +132,6 @@ class IndexedDBService {
           if (cursor) {
             instancesFound++;
             const instance = cursor.value;
-            // Обновляем экземпляр
             const updatedInstance = {
               ...instance,
               title: template.title,
@@ -177,7 +159,6 @@ class IndexedDBService {
 
         cursorRequest.onerror = event => {
           console.error('💾 SAVE TEMPLATE - Cursor error:', event);
-          // Даже если ошибка курсора, шаблон уже сохранен
           resolve();
         };
       };
@@ -189,7 +170,6 @@ class IndexedDBService {
 
       transaction.onerror = event => {
         console.error('💾 SAVE TEMPLATE - Transaction error:', event);
-        // Не reject'им здесь, т.к. шаблон может быть уже сохранен
         resolve();
       };
     });
@@ -205,7 +185,6 @@ class IndexedDBService {
     });
   }
 
-  // Экземпляры
   async getInstancesForDate(date: string): Promise<TodoInstance[]> {
     const db = await this.openDB();
     return new Promise(resolve => {
@@ -241,7 +220,6 @@ class IndexedDBService {
     });
   }
 
-  // Утилиты
   async deleteInstancesForTemplate(templateId: string): Promise<void> {
     const db = await this.openDB();
     return new Promise((resolve, reject) => {

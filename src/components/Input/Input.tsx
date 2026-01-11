@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-
 type Input = {
   onChange: (val: string) => void;
   placeholder?: string;

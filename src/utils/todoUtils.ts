@@ -1,7 +1,6 @@
-import type { DayOfWeek, TodoTemplate } from '../types/todo';
+import type { DayOfWeek, TodoInstance, TodoTemplate } from '../types/todo';
 import { getDayOfWeek } from './dateUtils';
 
-// Проверяет, должен ли todo отображаться в указанную дату
 export const shouldShowTemplateOnDate = (
   template: TodoTemplate,
   date: Date
@@ -23,11 +22,10 @@ export const shouldShowTemplateOnDate = (
   }
 };
 
-// Генерирует экземпляры todo для даты на основе шаблонов
 export const generateInstancesForDate = (
   date: string,
   templates: TodoTemplate[],
-  existingInstances: Map<string, TodoInstance> // key: templateId
+  existingInstances: Map<string, TodoInstance> 
 ): TodoInstance[] => {
   const dateObj = new Date(date);
   const instances: TodoInstance[] = [];
@@ -37,10 +35,8 @@ export const generateInstancesForDate = (
       const existingInstance = existingInstances.get(template.id);
       
       if (existingInstance) {
-        // Используем существующий экземпляр
         instances.push(existingInstance);
       } else {
-        // Создаем новый экземпляр
         instances.push({
           id: `${template.id}_${date}`,
           templateId: template.id,
@@ -56,14 +52,14 @@ export const generateInstancesForDate = (
   return instances;
 };
 
-export const shouldTemplateShowOnDate = (template: TodoTemplate, dayOfWeek: DayOfWeek): boolean => {
+export const shouldTemplateShowOnDate = (template: TodoTemplate, dayOfWeek: string): boolean => {
   switch (template.repeatType) {
     case 'daily':
       return true;
     
     case 'weekly':
     case 'specific_days':
-      const includes = template.repeatDays?.includes(dayOfWeek) ?? false;
+      const includes = template.repeatDays?.includes(dayOfWeek || '') ?? false;
       return includes;
     
     default:

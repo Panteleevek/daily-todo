@@ -12,7 +12,7 @@ import Todo from '@/components/Todo/Todo';
 
 const List = () => {
   const dispatch = useAppDispatch();
-  const { instances, loading, selectedDate, emptyList } = useAppSelector(s => s.todos);
+  const { instances, loading, selectedDate, emptyList, isToday } = useAppSelector(s => s.todos);
   const sortInstances = useMemo(() => {
     if (Array.isArray(instances)) {
       return [...instances].sort((a, b) => {
@@ -39,7 +39,7 @@ const List = () => {
     },
     [dispatch, isNotToday]
   );
-  
+
   if (loading) {
     return (
       <div className="flex flex-col w-[100%] items-center justify-center py-8">
@@ -70,7 +70,7 @@ const List = () => {
     );
   };
   return (
-    <div className="flex flex-col relative w-[100%] h-[100%] justify-between  pt-[72px]">
+    <div className="flex flex-col relative w-[100%] h-[100%] justify-between pt-[72px]" style={{paddingTop: isToday ? '72px' : '100px'}}>
       <div className="px-2 mt-[12px]">{renderInstances()}</div>
       <Result instances={instances} />
     </div>

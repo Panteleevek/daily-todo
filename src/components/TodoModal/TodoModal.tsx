@@ -1,13 +1,13 @@
-import { useAppSelector } from '@/app/hooks';
+import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import Modal from '../Modal/Modal';
 import { useEffect, useMemo, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { createTemplate, setModal, updateTemplate } from '@/app/todos/slice';
 import Input from '../Input/Input';
 import Checkbox from '../Checkbox/Checkbox';
 import Dropdown from '../Dropdown/Dropdown';
 
 import { days, times, counts } from '../../config/data';
+import type { TodoInstance } from '@/types/todo';
 
 interface TodoForm {
   title: string;
@@ -18,7 +18,7 @@ interface TodoForm {
 }
 
 const TodoModal = () => {
-  const [form, setForm] = useState<TodoInstance>({
+  const [form, setForm] = useState<TodoInstance | any>({
     title: '',
     time: undefined,
     period: undefined,
@@ -30,12 +30,12 @@ const TodoModal = () => {
   const { modalType, currentInstance } = useAppSelector(s => s.todos);
   const isOpen = useMemo(() => !!modalType, [modalType]);
   const isEdit = useMemo(() => modalType === 'edit', [modalType]);
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   useEffect(() => {
-    if(isEdit){
-      setForm({...currentInstance})
+    if (isEdit && currentInstance) {
+      setForm({ ...currentInstance });
     }
-  },[isEdit])
+  }, [isEdit]);
   const title = useMemo(() => {
     if (isEdit) return 'Редактировать';
     return 'Создать';
@@ -128,7 +128,6 @@ const TodoModal = () => {
 
   const handleClose = () => {
     dispatch(setModal(undefined));
-    // Сброс формы при закрытии
     setForm({
       title: '',
       time: undefined,
@@ -161,7 +160,8 @@ const TodoModal = () => {
               onChange={val => handleChange(val, 'time')}
               options={times}
               value={form.time}
-              placeholder="Время"
+              placeholder="Время для занятия"
+              
             />
           </div>
           <div className="w-[30%]">
@@ -193,13 +193,13 @@ const TodoModal = () => {
         </div>
 
         <div className="mt-4 p-2 bg-blue-50 rounded text-sm text-blue-700">
-          {form.always && <p>✅ Задача будет повторяться каждый день</p>}
+          {form.always && <p>Задача будет повторяться каждый день</p>}
           {Array.isArray(form.period) && form.period.length > 0 && (
-            <p>✅ Задача будет повторяться в выбранные дни: {form.period.join(', ')}</p>
+            <p>Задача будет повторяться в выбранные дни: {form.period.join(', ')}</p>
           )}
           {!form.always &&
             (!form.period || (Array.isArray(form.period) && form.period.length === 0)) && (
-              <p>⚠️ Выберите дни повторения или поставьте "Всегда"</p>
+              <p color='red'>Выберите дни повторения или поставьте "Всегда"</p>
             )}
         </div>
       </div>

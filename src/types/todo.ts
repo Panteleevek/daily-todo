@@ -38,8 +38,8 @@ export interface TodoInstance {
   completedAt?: string;
   title: string;
   time?: string;
-  count: string;
-  completedCount: string;
+  count?: string;
+  completedCount?: string;
 }
 
 export interface TodoState {
@@ -52,6 +52,7 @@ export interface TodoState {
   error?: string;
   currentInstance?: TodoInstance;
   emptyList: boolean
+  isToday: boolean
 }
 
 export interface TodoFormData {

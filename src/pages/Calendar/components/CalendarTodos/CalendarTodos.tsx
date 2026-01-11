@@ -20,7 +20,7 @@ const CalendarTodos: React.FC = () => {
       dispatch(loadTodosForDate(selectedDate));
     }
   }, [instances.length === 0]);
-  console.log('templates', templates);
+
   const getDayStats = (date: string) => {
     const dayOfWeek = getDayOfWeek(new Date(date));
     const dayTemplates = templates
@@ -38,7 +38,6 @@ const CalendarTodos: React.FC = () => {
     };
   };
 
-  // Генерация дней месяца
   const generateMonthDays = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -105,7 +104,6 @@ const CalendarTodos: React.FC = () => {
     return false;
   }, [templates, currentMonth]);
 
-  console.log('showPrevMonth', showPrevMonth);
   const handlePrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
@@ -146,55 +144,62 @@ const CalendarTodos: React.FC = () => {
 
   return (
     <div className="relative bg-white rounded-xl shadow-sm mb-[64px]">
-      <div className="fixed grid grid-cols-3 items-center mb-4 py-2 px-4 bg-white w-[100%]">
-        <div className="flex justify-start">
+      <div className="fixed grid grid-cols-3 items-center justify-between mb-4 py-2 px-4 bg-white w-[100%]">
+        <div className="flex w-[60px] mr-auto ">
           {showPrevMonth && (
             <div
               onClick={handlePrevMonth}
-              className="px-3 py-2 font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              className="py-2 font-medium text-gray-500 hover:bg-gray-100 rounded-lg cursor-pointer"
             >
               Назад
             </div>
           )}
         </div>
 
-        <div className="flex-1 min-w-[150px] text-center">
-          <h3 className="text-xl font-bold">
-            {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-          </h3>
-          <div
-            onClick={handleToday}
-            className="mt-1 text-s text-blue-600 hover:text-blue-800 cursor-pointer"
-          >
-            Сегодня
+        <div className="flex flex-col text-center  w-[100%]">
+          <div className="flex flex-col">
+            <span className="text-lg font-semibold">{monthNames[currentMonth.getMonth()]}</span>
+            <span className="text-sm text-gray-500">{currentMonth.getFullYear()}</span>
           </div>
+          {showPrevMonth && (
+            <div
+              onClick={handleToday}
+              className="mt-1 text-s text-blue-600 hover:text-blue-800 cursor-pointer"
+            >
+              Сегодня
+            </div>
+          )}
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex w-[60px] ml-auto">
           <div
             onClick={handleNextMonth}
-            className="px-3 py-2 text-s font-medium text-gray-500 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            className=" py-2 text-s font-medium text-gray-500 hover:bg-gray-100 rounded-lg cursor-pointer"
           >
             Вперед
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-1  p-4 pt-[72px]   bg-gradient-to-br from-[#f0eee9]">
-        {generateMonthDays().map((day, index) => {
+      <div
+        className="grid grid-cols-1 gap-1 px-2 py-4 bg-gradient-to-br from-[#f0eee9]"
+        style={{ paddingTop: !showPrevMonth ? '90px' : '120px' }}
+      >
+        {generateMonthDays().map((day) => {
           if (!day) {
-            return <div key={`empty-${index}`}></div>;
+            return null
           }
           const haveTodos = !!day.stats.total;
+
           return (
             <div
               key={day.date}
               onClick={() => haveTodos && handleDateSelect(day.date)}
               className={`
                 h-[100px]
-                p-3 flex flex-col items-start justify-start rounded-lg transition-all border-1 
+                p-3 mb-[16px] flex flex-col items-start justify-start rounded-2xl shadow-sm transition-all
                 bg-white
                 ${day.isToday && ' bg-[blue] text-[white]'}
-                ${day.isSelected && 'border-2 border-blue-400 '}
+                ${day.isSelected && 'border-1 border-blue-400 '}
                 ${!day.isSelected && haveTodos && !day.isToday ? 'hover:bg-gray-100' : ''}
                 ${day.stats.hasTasks ? 'font-semibold' : ''}
                 ${haveTodos && 'cursor-pointer'} 

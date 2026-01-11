@@ -6,7 +6,7 @@ const daysMap = new Map(days.map(day => [day.value, day.label]));
 const weekOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 type Todo = {
-  instance: TodoInstance;
+  instance: TodoInstance & { period?: any};
   onClick: (val: string) => void;
   disabled: boolean;
   isProfile?: boolean;
@@ -39,11 +39,11 @@ const Todo = ({ instance, onClick, disabled, isProfile }: Todo) => {
         <div className="flex flex-col mt-5 pt-4 border-t border-gray-300">
           <div className="flex justify-between">
             <div>Кол-во повторений: {count} раза</div>
-            <div>Время: {time} мин</div>
+            {time && <div>Время: {time} мин</div>}
           </div>
           <div className="flex justify-between mt-2">
             <div>Дни воспроизведения: </div>
-            <div>{textDays}</div>
+            <div>{textDays || 'всегда'}</div>
           </div>
         </div>
       );
@@ -56,7 +56,7 @@ const Todo = ({ instance, onClick, disabled, isProfile }: Todo) => {
       return (
         <div className="flex items-center">
           <div
-            className="flex items-center font-medium text-gray-500 border-1 bg-white h-[44px] mr-2 px-4 rounded-lg hover:bg-gray-100 cursor-pointer"
+            className="flex items-center font-medium text-gray-900 border-1 bg-white h-[44px] mr-2 px-4 rounded-lg hover:bg-gray-100 cursor-pointer"
             onClick={() => {
               dispatch(setCurrentInstance(instance))
               dispatch(setModal('edit'))
@@ -65,7 +65,7 @@ const Todo = ({ instance, onClick, disabled, isProfile }: Todo) => {
             Редактировать
           </div>
           <div
-            className="flex items-center cursor-pointer font-medium text-gray-500 border-1 bg-white h-[44px] px-4 rounded-lg hover:bg-gray-100"
+            className="flex items-center cursor-pointer font-medium text-gray-900 border-1 bg-white h-[44px] px-4 rounded-lg hover:bg-gray-100"
             onClick={() =>{
                dispatch(deleteTemplate(templateId))
               }}

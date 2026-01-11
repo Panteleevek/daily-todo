@@ -1,11 +1,7 @@
-import Todos from "./components/Todos/Todos"
+import Todos from './components/Todos/Todos';
 
 const Profile = () => {
-    return (
-        <div>
-            <Todos/>
-        </div>
-    )
-}
+    return <Todos />;
+};
 
-export default Profile
+export default Profile;

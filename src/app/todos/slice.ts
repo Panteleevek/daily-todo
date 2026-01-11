@@ -10,15 +10,19 @@ const initialState: TodoState = {
   instances: [],
   selectedDate: getToday(),
   loading: false,
-  currentInstance: null,
+  currentInstance: undefined,
   currentDateInstances: undefined,
   emptyList: false,
+  isToday: false,
 };
 
 export const todosSlice = createSlice({
   name: 'todos',
   initialState,
   reducers: {
+    setIsToday: (state, action: PayloadAction<boolean>) => {
+      state.isToday = action.payload;
+    },
     setTemplates: (state, action: PayloadAction<TodoTemplate[]>) => {
       state.templates = action.payload;
     },
@@ -45,14 +49,12 @@ export const todosSlice = createSlice({
     updateInstance: (state, action: PayloadAction<TodoInstance>) => {
       const index = state.instances.findIndex(i => i.id === action.payload.id);
       if (index !== -1) {
-        // Полная замена элемента
         state.instances = [
           ...state.instances.slice(0, index),
           action.payload,
           ...state.instances.slice(index + 1),
         ];
       } else {
-        // Если не нашли - добавляем (на всякий случай)
         state.instances.push(action.payload);
       }
     },
@@ -77,7 +79,6 @@ export const todosSlice = createSlice({
   },
 });
 
-// Thunks
 export const loadTodosForDate =
   (date: string, showAll?: boolean): AppThunk =>
   async dispatch => {
@@ -88,9 +89,10 @@ export const loadTodosForDate =
       const emptyList = Array.isArray(templates) && templates.length === 0;
       dispatch(todosSlice.actions.setEmptyList(emptyList));
       dispatch(todosSlice.actions.setTemplates(templates));
+      const today = getToday();
+      dispatch(setIsToday(date === today));
 
       const existingInstances = await indexedDBService.getInstancesForDate(date);
-      // Генерируем экземпляры для даты
       const dateObj = new Date(date);
       const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       const instancesForDate = templates
@@ -109,7 +111,6 @@ export const loadTodosForDate =
           return true;
         })
         .filter(template => compareDay(template.createdAt, date))
-        // .sort((a,b) => a.complated)
         .map(template => {
           const existing = existingInstances.find(i => i.templateId === template.id);
 
@@ -127,8 +128,8 @@ export const loadTodosForDate =
             completedCount: '0',
           };
         });
-      // Сохраняем новые экземпляры
-      const savePromises = instancesForDate
+
+        const savePromises = instancesForDate
         .filter(instance => !existingInstances.find(i => i.templateId === instance.templateId))
         .map(instance => indexedDBService.saveInstance(instance));
 
@@ -165,6 +166,7 @@ export const createTemplate =
         always: formData.repeatType === 'daily',
         count: formData.count,
         createdAt: new Date().toISOString(),
+        completedDates: [''],
       };
 
       await indexedDBService.saveTemplate(newTemplate);
@@ -202,17 +204,9 @@ export const incrementTodoCount =
     };
 
     try {
-      // Сохраняем экземпляр
       await indexedDBService.saveInstance(updatedInstance);
-
-      // Если задача полностью выполнена, обновляем шаблон
       if (isCompleted && !instance.completed) {
-        console.log('🎯 Task completed, updating template history');
-
-        // Обновляем completedDates в шаблоне
         await indexedDBService.updateTemplateCompletion(instance.templateId, instance.date, true);
-
-        // Обновляем шаблон в Redux state
         const template = state.todos.templates.find(t => t.id === instance.templateId);
         if (template) {
           const updatedTemplate = {
@@ -221,7 +215,6 @@ export const incrementTodoCount =
             lastCompleted: new Date().toISOString(),
           };
 
-          // Обновляем в Redux
           const templateIndex = state.todos.templates.findIndex(t => t.id === instance.templateId);
           if (templateIndex !== -1) {
             const newTemplates = [...state.todos.templates];
@@ -231,7 +224,6 @@ export const incrementTodoCount =
         }
       }
 
-      // Обновляем экземпляр в Redux
       dispatch(todosSlice.actions.updateInstance(updatedInstance));
     } catch (error) {
       console.error('Failed to increment count:', error);
@@ -240,7 +232,7 @@ export const incrementTodoCount =
 
 export const updateTemplate =
   (params: {
-    templateId: string;
+    templateId?: string;
     title: string;
     time?: string;
     repeatType: 'daily' | 'weekly' | 'specific_days';
@@ -270,19 +262,18 @@ export const updateTemplate =
         count: params.count,
       };
 
-      // Обновляем шаблон в состоянии
       const index = templates.findIndex(t => t.id === params.templateId);
       if (index !== -1) {
         const newTemplates = [...templates];
         newTemplates[index] = updatedTemplate;
         dispatch(todosSlice.actions.setTemplates(newTemplates));
       }
+      // @ts-ignore
       await indexedDBService.saveInstance(updatedTemplate);
       await indexedDBService.saveTemplate(updatedTemplate);
 
       dispatch(todosSlice.actions.setModal(undefined));
 
-      // Перезагружаем экземпляры для текущей даты
       const currentDate = getState().todos.selectedDate;
       await dispatch(loadTodosForDate(currentDate));
     } catch (error) {
@@ -310,13 +301,11 @@ export const toggleTodoInstance =
     let completedAt: string | undefined;
 
     if (!instance.completed) {
-      // Выполняем задачу
       const newCount = Math.min(currentCount + 1, targetCount);
       completedCount = newCount.toString();
       completed = newCount >= targetCount;
       completedAt = completed ? new Date().toISOString() : undefined;
     } else {
-      // Отменяем выполнение
       completedCount = '0';
       completed = false;
       completedAt = undefined;
@@ -330,22 +319,16 @@ export const toggleTodoInstance =
     };
 
     try {
-      // Сохраняем экземпляр
       await indexedDBService.saveInstance(updatedInstance);
 
-      // Обновляем completedDates в шаблоне
       if (completed && !instance.completed) {
-        // Добавляем дату выполнения
         await indexedDBService.updateTemplateCompletion(instance.templateId, instance.date, true);
       } else if (!completed && instance.completed) {
-        // Удаляем дату выполнения
         await indexedDBService.updateTemplateCompletion(instance.templateId, instance.date, false);
       }
 
-      // Обновляем в Redux
       dispatch(todosSlice.actions.updateInstance(updatedInstance));
 
-      // Перезагружаем шаблоны для обновления статистики
       const templates = await indexedDBService.getAllTemplates();
       dispatch(todosSlice.actions.setTemplates(templates));
     } catch (error) {
@@ -363,7 +346,6 @@ export const deleteTemplate =
       await indexedDBService.deleteTemplate(templateId);
       await indexedDBService.deleteInstancesForTemplate(templateId);
 
-      // Обновляем экземпляры для текущей даты
       const currentDate = getState().todos.selectedDate;
       dispatch(loadTodosForDate(currentDate));
     } catch (error) {
@@ -394,6 +376,7 @@ export const {
   setError,
   clearError,
   setCurrentInstances,
+  setIsToday,
 } = todosSlice.actions;
 
 export default todosSlice.reducer;
