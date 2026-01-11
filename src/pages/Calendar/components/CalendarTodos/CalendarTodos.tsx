@@ -181,8 +181,8 @@ const CalendarTodos: React.FC = () => {
         </div>
       </div>
       <div
-        className="grid grid-cols-1 gap-1 px-2 py-4 bg-gradient-to-br from-[#f0eee9]"
-        style={{ paddingTop: !showPrevMonth ? '90px' : '120px' }}
+        className="grid grid-cols-1 gap-1 px-2 py-4"
+        style={{ paddingTop: !showPrevMonth ? '90px' : '120px', background: 'linear-gradient(135deg, #f0eee9 0%, white 100%)' }}
       >
         {generateMonthDays().map((day) => {
           if (!day) {
@@ -198,12 +198,13 @@ const CalendarTodos: React.FC = () => {
                 h-[100px]
                 p-3 mb-[16px] flex flex-col items-start justify-start rounded-2xl shadow-sm transition-all
                 bg-white
-                ${day.isToday && ' bg-[blue] text-[white]'}
+                ${day.isToday && 'text-[white]'}
                 ${day.isSelected && 'border-1 border-blue-400 '}
                 ${!day.isSelected && haveTodos && !day.isToday ? 'hover:bg-gray-100' : ''}
                 ${day.stats.hasTasks ? 'font-semibold' : ''}
                 ${haveTodos && 'cursor-pointer'} 
               `}
+              style={{backgroundColor: day.isToday ? 'blue' : 'white' }}
             >
               <div className={`flex justify-between w-[100%]`}>
                 <div className=" text-[18px] font-semibold">{day.dayName}</div>

@@ -40,7 +40,7 @@ const ModalInfo = () => {
       buttonText="Готово"
       onClick={handleSubmit}
     >
-      <div className="w-[100%] flex flex-col">
+      <div className="w-[100%] flex flex-col h-[100%] max-h-[350px] overflow-y-auto">
         <div className="mb-2">Удобнее будет, если вы сделаете PWA</div>
         <div>Вот пример установки PWA на ваш телефон (IOS)</div>
         <div className="mb-2">
@@ -54,7 +54,7 @@ const ModalInfo = () => {
           <img
             src={imageInfo1}
             alt={`Изображение 2`}
-            className="w-full h-[320px] object-cover object-bottom transition-transform duration-300"
+            className="w-full h-[240px] object-cover object-bottom transition-transform duration-300"
           />
         </div>
       </div>
